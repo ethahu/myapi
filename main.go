@@ -24,21 +24,37 @@ func setHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Query().Get("key")
 	field := r.URL.Query().Get("field")
 	value := r.URL.Query().Get("value")
-	if key == "" || field == "" || value == "" {
-		http.Error(w, "Key, field, and value are required", http.StatusBadRequest)
-		return
-	}
 
-	fmt.Println("Setting hash field:", field, "with value:", value)
-	err := client.HSet(ctx, key, field, value).Err()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		fmt.Println("Error setting hash field:", err)
-		return
-	}
-	fmt.Fprintf(w, "Hash field set successfully")
-	fmt.Println("Hash field set successfully")
+	
+if key == "" || value == "" {
+        http.Error(w, "Key and value are required", http.StatusBadRequest)
+        return
+    }
+
+    if field == "" {
+        fmt.Println("Setting String key:", key)
+        err := client.Set(ctx, key, value, 0).Err()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            fmt.Println("Error setting String key:", err)
+            return
+        }
+        fmt.Fprintf(w, "Key: %s set to Value: %s", key, value)
+        fmt.Println("Key:", key, "set to Value:", value)
+    } else {
+        fmt.Println("Setting hash field:", field)
+        err := client.HSet(ctx, key, field, value).Err()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            fmt.Println("Error setting hash field:", err)
+            return
+        }
+        fmt.Fprintf(w, "Field: %s set to Value: %s", field, value)
+        fmt.Println("Field:", field, "set to Value:", value)
+    }
 }
+
+
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
 	client := newRedisClient()
