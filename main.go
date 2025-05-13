@@ -20,23 +20,50 @@ func newRedisClient() *redis.Client {
 
 func setHandler(w http.ResponseWriter, r *http.Request) {
     client := newRedisClient()
-    err := client.Set(ctx, "key", "value", 0).Err()
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+    key := r.URL.Query().Get("key")
+    field := r.URL.Query().Get("field")
+    value := r.URL.Query().Get("value")
+    if key == "" || field == "" || value == "" {
+        http.Error(w, "Key, field, and value are required", http.StatusBadRequest)
         return
     }
-    fmt.Fprintf(w, "Key set successfully")
+
+    fmt.Println("Setting hash field:", field, "with value:", value)
+    err := client.HSet(ctx, key, field, value).Err()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        fmt.Println("Error setting hash field:", err)
+        return
+    }
+    fmt.Fprintf(w, "Hash field set successfully")
+    fmt.Println("Hash field set successfully")
 }
+
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
     client := newRedisClient()
-    val, err := client.Get(ctx, "key").Result()
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+    key := r.URL.Query().Get("key")
+    field := r.URL.Query().Get("field")
+    if key == "" || field == "" {
+        http.Error(w, "Key and field are required", http.StatusBadRequest)
         return
     }
-    fmt.Fprintf(w, "Key: %s", val)
+
+    fmt.Println("Getting hash field:", field)
+    val, err := client.HGet(ctx, key, field).Result()
+    if err == redis.Nil {
+        http.Error(w, "Field not found", http.StatusNotFound)
+        fmt.Println("Field not found:", field)
+        return
+    } else if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        fmt.Println("Error getting hash field:", err)
+        return
+    }
+    fmt.Fprintf(w, "Field: %s, Value: %s", field, val)
+    fmt.Println("Field:", field, "Value:", val)
 }
+
 
 func main() {
     http.HandleFunc("/set", setHandler)
